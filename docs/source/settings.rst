@@ -181,10 +181,15 @@ T            request time in seconds
 D            request time in microseconds
 L            request time in decimal seconds
 p            process ID
-{Header}i    request header
-{Header}o    response header
-{Variable}e  environment variable
+{header}i    request header
+{header}o    response header
+{variable}e  environment variable
 ===========  ===========
+
+Use lowercase for header and environment variable names, and put
+``{...}x`` names inside ``%(...)s``. For example::
+
+    %({x-forwarded-for}i)s
 
 .. _errorlog:
 
@@ -1103,8 +1108,11 @@ bind
 
 The socket to bind.
 
-A string of the form: ``HOST``, ``HOST:PORT``, ``unix:PATH``. An IP is
-a valid ``HOST``.
+A string of the form: ``HOST``, ``HOST:PORT``, ``unix:PATH``,
+``fd://FD``. An IP is a valid ``HOST``.
+
+.. versionchanged:: 20.0
+   Support for ``fd://FD`` got added.
 
 Multiple addresses can be bound. ex.::
 
@@ -1235,7 +1243,7 @@ max_requests
 
 The maximum number of requests a worker will process before restarting.
 
-Any value greater than zero will limit the number of requests a work
+Any value greater than zero will limit the number of requests a worker
 will process before automatically restarting. This is a simple method
 to help limit the damage of memory leaks.
 

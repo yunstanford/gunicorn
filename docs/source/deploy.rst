@@ -67,13 +67,13 @@ Gunicorn 19 introduced a breaking change concerning how ``REMOTE_ADDR`` is
 handled. Previous to Gunicorn 19 this was set to the value of
 ``X-Forwarded-For`` if received from a trusted proxy. However, this was not in
 compliance with :rfc:`3875` which is why the ``REMOTE_ADDR`` is now the IP
-address of **the proxy** and **not the actual user**. You should instead
-configure Nginx to send the user's IP address through the ``X-Forwarded-For``
-header like this::
+address of **the proxy** and **not the actual user**.
 
-    ...
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    ...
+To have access logs indicate **the actual user** IP when proxied, set
+:ref:`access-log-format` with a format which includes ``X-Forwarded-For``. For
+example, this format uses ``X-Forwarded-For`` in place of ``REMOTE_ADDR``::
+
+    %({x-forwarded-for}i)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s"
 
 It is also worth noting that the ``REMOTE_ADDR`` will be completely empty if
 you bind Gunicorn to a UNIX socket and not a TCP ``host:port`` tuple.
@@ -233,7 +233,7 @@ unix socket:
     RuntimeDirectory=gunicorn
     WorkingDirectory=/home/someuser/applicationroot
     ExecStart=/usr/bin/gunicorn --pid /run/gunicorn/pid   \
-              --bind unix:/run/gunicorn/socket applicationname.wsgi
+              --bind unix:/run/gunicorn.sock applicationname.wsgi
     ExecReload=/bin/kill -s HUP $MAINPID
     ExecStop=/bin/kill -s TERM $MAINPID
     PrivateTmp=true
@@ -247,8 +247,10 @@ unix socket:
     Description=gunicorn socket
 
     [Socket]
-    ListenStream=/run/gunicorn/socket
-
+    ListenStream=/run/gunicorn.sock
+    User=someuser
+    Group=someuser
+    
     [Install]
     WantedBy=sockets.target
 
@@ -265,7 +267,7 @@ Either reboot, or start the services manually::
     systemctl start gunicorn.socket
 
 
-After running ``curl --unix-socket /run/gunicorn/socket http``, Gunicorn
+After running ``curl --unix-socket /run/gunicorn.sock http``, Gunicorn
 should start and you should see some HTML from your server in the terminal.
 
 You must now configure your web proxy to send traffic to the new Gunicorn
@@ -279,7 +281,7 @@ socket. Edit your ``nginx.conf`` to include the following:
             listen          8000;
             server_name     127.0.0.1;
             location / {
-                proxy_pass http://unix:/run/gunicorn/socket;
+                proxy_pass http://unix:/run/gunicorn.sock;
             }
         }
     }

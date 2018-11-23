@@ -2,8 +2,6 @@
 #
 # This file is part of gunicorn released under the MIT license.
 # See the NOTICE for more information.
-from __future__ import print_function
-
 import errno
 import os
 import random
@@ -377,8 +375,11 @@ class Arbiter(object):
         :attr graceful: boolean, If True (the default) workers will be
         killed gracefully  (ie. trying to wait for the current connection)
         """
-
-        unlink = self.reexec_pid == self.master_pid == 0 and not self.systemd
+        unlink = (
+            self.reexec_pid == self.master_pid == 0
+            and not self.systemd
+            and not self.cfg.reuse_port
+        )
         sock.close_sockets(self.LISTENERS, unlink)
 
         self.LISTENERS = []
@@ -541,7 +542,7 @@ class Arbiter(object):
         Maintain the number of workers by spawning or killing
         as required.
         """
-        if len(self.WORKERS.keys()) < self.num_workers:
+        if len(self.WORKERS) < self.num_workers:
             self.spawn_workers()
 
         workers = self.WORKERS.items()
@@ -612,7 +613,7 @@ class Arbiter(object):
         of the master process.
         """
 
-        for _ in range(self.num_workers - len(self.WORKERS.keys())):
+        for _ in range(self.num_workers - len(self.WORKERS)):
             self.spawn_worker()
             time.sleep(0.1 * random.random())
 
